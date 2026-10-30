@@ -6,7 +6,8 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "check": "node --check src/server.js && node --check public/app.js && node --check public/admin.js"
   },
   "engines": {
     "node": ">=20"
@@ -19,6 +20,8 @@
     "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",
     "helmet": "^8.0.0",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "multer": "^2.0.2",
+    "nodemailer": "^6.10.1"
   }
 }

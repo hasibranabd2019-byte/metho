@@ -1,79 +1,52 @@
-# মেঠো ই-কমার্স স্টার্টার (Render + Supabase)
+# মেঠো ই-কমার্স ওয়েব অ্যাপ
 
-বাংলা মোবাইল-ফার্স্ট খেজুরের গুড়ের landing page ও Express API starter। এটি **প্রাথমিক প্রকল্প**, লাইভে দেওয়ার আগে security review, বাস্তব order test, privacy policy এবং Steadfast API contract যাচাই আবশ্যক।
+একটি responsive ওয়েবসাইট: কাস্টমার স্টোরফ্রন্ট `/` এবং একই সাইটের অ্যাডমিন প্যানেল `/admin`। Node.js + Express + Supabase PostgreSQL; Render-এ হোস্ট করার জন্য প্রস্তুত।
 
-## ফ্রি হোস্টিং আর্কিটেকচার
-- Render Free Web Service: Node.js অ্যাপ এবং ফ্রি `onrender.com` সাবডোমেইন
-- Supabase Free: PostgreSQL ডেটাবেস ও PostgreSQL-backed session store
-- GitHub: কোড repository
+## বর্তমান কার্যকারিতা
+- কাস্টমার অর্ডার: ঝোলা/পাটালি গুড়, ১ কেজি/২ কেজি প্যাক, পরিমাণ, জেলা ও ঠিকানা।
+- COD এবং বিকাশ অগ্রিম পেমেন্টের Transaction ID জমা; বিকাশ পেমেন্ট অ্যাডমিন যাচাই করবেন। এটি এখন manual verification, bKash Payment Gateway API নয়।
+- অর্ডার ডেটাবেজে Pending; স্টাফ পেমেন্ট যাচাইয়ের স্ট্যাটাস দিতে পারেন; কেবল অ্যাডমিন `confirmed` করে Steadfast বুকিং অনুমোদন করবেন।
+- SteadFast Admin module: single booking, bulk booking (up to 50 selected orders per request), merchant balance lookup, status refresh by consignment ID/tracking code, return request, and booking history. API keys remain server-side in Render Environment. COD orders send total COD amount; prepaid bKash orders send COD amount 0.
+- ২ জন পর্যন্ত অ্যাডমিন ও ৫ জন পর্যন্ত স্টাফ; প্রথম অ্যাডমিন ENV দিয়ে bootstrap হয়। অ্যাডমিন প্যানেল থেকে দ্বিতীয় অ্যাডমিন/স্টাফ তৈরি হয়।
+- অ্যাডমিন প্যানেল থেকে পণ্য, মূল্য, ওয়েবসাইটের লেখা, লোগো/ব্যানার/ভিডিও URL, রং, বিকাশ নম্বর, যোগাযোগ ও ডেলিভারি চার্জ পরিবর্তন করা যায়।
 
-ফ্রি প্ল্যানে sleep/pausing, quota, backup এবং availability সীমাবদ্ধতা থাকতে পারে। ব্যবসায়িক অর্ডার নিলে নিয়মিত ব্যাকআপ এবং restore test আলাদাভাবে সেট করুন।
+## গুরুত্বপূর্ণ সীমাবদ্ধতা / লাইভের আগে
+- ছবি বর্তমানে HTTPS image URL দিয়ে সেট করা যায়; সরাসরি ফাইল আপলোডের জন্য Supabase Storage bucket integration পরের ধাপে যুক্ত করতে হবে।
+- bKash এখানে manual Transaction ID verification; স্বয়ংক্রিয় gateway checkout/callback নেই।
+- Steadfast create-order contract আপনার Merchant API guide/screenshots অনুযায়ী; production booking-এর আগে merchant account-এ একটি test order করে response যাচাই করুন। Tracking status polling/cancel API এখনো যুক্ত নয়।
+- SMS ও push notifications এখনো যুক্ত নয়।
+- Admin user creation limit (২ admin/৫ staff) আছে; প্রথম bootstrap admin-সহ সক্রিয় অ্যাকাউন্টের সংখ্যা সীমিত।
+- Production security review, privacy/return policy, backups, order lifecycle tests এবং payment/courier reconciliation সম্পন্ন না করে live sales শুরু করবেন না।
 
-## 1) Supabase তৈরি
-1. https://supabase.com/ এ নতুন project তৈরি করুন।
-2. Project Settings → Database থেকে connection string URI নিন। Render-এ দীর্ঘমেয়াদি server-side connection-এর জন্য Supabase-এর নির্দেশিত connection/pooler string ব্যবহার করুন।
-3. URI-তে password সঠিকভাবে বসান; special character থাকলে URL-encode করতে হবে। URI কখনো GitHub-এ commit করবেন না।
-4. অ্যাপ প্রথম চালু হলে `orders` table ও `user_sessions` table তৈরি হবে। কোনো public client থেকে database access দেবেন না; সব database query server-side-এ হয়।
+## লোকাল রান
+1. Node.js 20+ ইনস্টল করুন।
+2. `npm install`
+3. `.env.example` কপি করে `.env` তৈরি করুন। Supabase PostgreSQL URI, অন্তত ৩২ অক্ষরের SESSION_SECRET এবং bcrypt admin hash বসান।
+4. `npm start`
+5. `http://localhost:3000` এবং `http://localhost:3000/admin` খুলুন।
 
-## 2) Admin password hash তৈরি
-লোকাল কম্পিউটারে Node.js ইনস্টল করে প্রকল্প ফোল্ডারে চালান:
+Admin hash: `node -e "console.log(require('bcryptjs').hashSync('আপনার-শক্তিশালী-পাসওয়ার্ড', 12))"`
 
-```bash
-npm install
-node -e "console.log(require('bcryptjs').hashSync('REPLACE_WITH_A_LONG_UNIQUE_PASSWORD', 12))"
-```
+## Render + Supabase deployment
+- GitHub-এ repository push করুন।
+- Supabase-এ Free project তৈরি করে PostgreSQL connection string (pooler URI) নিন।
+- Render-এ New → Web Service → GitHub repo নির্বাচন করুন; Build: `npm install`, Start: `npm start`.
+- Render Environment-এ `DATABASE_URL`, `DATABASE_SSL=require`, `SESSION_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`, `NODE_ENV=production` দিন। Steadfast credentials কেবল Render Environment-এ private ভাবে দিন।
+- Deploy শেষে `/api/health` পরীক্ষা করুন; `database: connected` প্রত্যাশিত।
+- Free Render service idle হলে sleep করতে পারে; free tier production uptime guarantee নয়।
 
-আউটপুটটি `ADMIN_PASSWORD_HASH`-এ দিন। বাস্তব পাসওয়ার্ড কোড বা README-তে লিখবেন না।
+## API
+- `GET /api/config`, `POST /api/orders`
+- `POST /api/admin/login`, `GET /api/admin/me`, `POST /api/admin/logout`
+- `GET /api/admin/orders`, `PATCH /api/admin/orders/:id`, `POST /api/admin/orders/:id/steadfast`, `POST /api/admin/steadfast/bulk`, `GET /api/admin/steadfast/balance`, `POST /api/admin/orders/:id/track`, `POST /api/admin/orders/:id/return`
+- `GET/PUT /api/admin/settings`
+- `GET/POST/PATCH /api/admin/products`
+- `GET/POST/PATCH /api/admin/users`
 
-## 3) Render deploy
-1. প্রকল্পের সব ফাইল GitHub repository-তে upload/push করুন; `.env` বা secret commit করবেন না।
-2. Render dashboard → New → Web Service → GitHub repository নির্বাচন করুন।
-3. Build command: `npm install`
-4. Start command: `npm start`
-5. Runtime Node 20 বা সমর্থিত নতুন LTS সংস্করণ দিন।
-6. Environment Variables-এ `.env.example` থেকে মানগুলো পূরণ করুন: `DATABASE_URL`, `PGSSLMODE` (leave unset for TLS; use `disable` only for local non-TLS PostgreSQL), `NODE_ENV=production`, `SESSION_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH` এবং পণ্যের মূল্য/ডেলিভারি চার্জ।
-7. Deploy শেষে `https://YOUR-SERVICE.onrender.com/api/health` খুলুন। `ok:true` এবং `database:"connected"` দেখতে হবে।
 
-## 4) লোকাল রান
-```bash
-cp .env.example .env
-# .env-এ আসল Supabase URL এবং secrets বসান
-npm install
-npm start
-```
-তারপর `http://localhost:3000` এবং `http://localhost:3000/admin.html` খুলুন।
-
-## 5) Admin
-- URL: `/admin.html`
-- username: `ADMIN_USERNAME`
-- password: `ADMIN_PASSWORD_HASH`-এর plain-text password
-- production-এ আলাদা শক্তিশালী পাসওয়ার্ড, session secret, HTTPS, rate limit এবং access control যাচাই করুন।
-
-## 6) Steadfast
-Admin panel থেকে শুধু ফোনে নিশ্চিত করা (`confirmed`) order-এর booking request করা যায়। `STEADFAST_API_BASE`, `/create_order`, headers, payload এবং response field এই প্রকল্পে **প্রাথমিক adapter**। Merchant panel/support থেকে বর্তমান API contract নিশ্চিত না করে real booking চালাবেন না। প্রথম পরীক্ষা merchant নির্দেশনা অনুযায়ী test/low-risk order-এ করুন।
-
-## 7) Meta Pixel
-Meta Events Manager-এ Pixel তৈরি করে `META_PIXEL_ID` দিন। Browser Pixel event-গুলি বাস্তব event-এর সঙ্গে মেলে কি না Events Manager Test Events-এ পরীক্ষা করুন। Browser Pixel ও Conversions API একসঙ্গে চালালে `event_id` deduplication দরকার। কাস্টমারের ব্যক্তিগত তথ্য URL/query string বা Pixel event-এ পাঠাবেন না।
-
-## 8) Backup ও privacy
-- Supabase Free-তে backup/restore সীমা থাকতে পারে; free tier-এ backup ধরে নেবেন না। নিয়মিত `pg_dump`-ভিত্তিক encrypted backup বা নিরাপদ managed backup ব্যবস্থা করুন এবং restore পরীক্ষা করুন।
-- Customer name, phone, address সংবেদনশীলভাবে পরিচালনা করুন; staff access সীমিত করুন এবং প্রয়োজনের অতিরিক্ত তথ্য সংগ্রহ করবেন না।
-- Database password, admin hash, session secret, Meta server token, Steadfast API keys GitHub-এ দেবেন না।
-- Render Free service ঘুমিয়ে যেতে পারে; প্রথম ভিজিটে বিলম্ব হতে পারে। Free plan-এর সীমা বদলাতে পারে।
-
-## API routes
-- `GET /api/config`
-- `POST /api/orders`
-- `POST /api/admin/login`
-- `POST /api/admin/logout`
-- `GET /api/admin/orders`
-- `PATCH /api/admin/orders/:id`
-- `POST /api/admin/orders/:id/steadfast`
-- `GET /api/health`
-
-## Before taking real orders
-1. Test validation, totals, duplicate clicks and DB persistence.
-2. Review authentication/session/CSRF protections; add CSRF protection and production-grade monitoring before handling real customer data.
-3. Verify shipping rates, policies, return/refund text, privacy notice and product claims.
-4. Confirm Steadfast API contract and Meta event configuration.
-5. Configure independent encrypted backups and restore testing.
+## Admin improvements (email recovery and image upload)
+- Login password show/hide and email OTP password reset (10-minute OTP; 5 attempts).
+- Every admin/staff account must have a unique email address. Set `ADMIN_EMAIL` for the initial admin; add email when creating users.
+- Configure SMTP environment variables (`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, optional `SMTP_FROM`). Gmail requires an App Password, not the normal account password.
+- Create a **public** Supabase Storage bucket named `metho-assets` (or set `SUPABASE_STORAGE_BUCKET`). Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in Render. Never expose the service-role key in browser code or commit it.
+- Image uploads accept JPG/PNG/WEBP/GIF up to 5 MB.
